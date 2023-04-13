@@ -161,14 +161,14 @@ fn paragraph() {
 
         and this is a paragraph.
 
-        this is another one
+        this is another one.
         ";
 
     let expected = vec![
         Token { token_type: TokenType::H(1), text: "this is a header" },
         Token { token_type: TokenType::P, text: "and this is a paragraph." },
-        Token { token_type: TokenType::P, text: "this is another one" },
-        Token { text: " ", token_type: TokenType::EOF },
+        Token { token_type: TokenType::P, text: "this is another one." },
+        Token { token_type: TokenType::EOF, text: " " },
     ];
 
     let mut lexer = Lexer::new(source);
