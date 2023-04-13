@@ -6,7 +6,7 @@ pub struct Token<'a> {
 
 #[derive(PartialEq, Debug)]
 pub enum TokenType {
-    H(usize), P, ULItem,
+    H(usize), P, ULItem, OLItem,
 
     EOF
 }

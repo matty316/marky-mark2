@@ -29,7 +29,7 @@ impl<'a> Lexer<'a> {
                    if self.peek() == b' ' {
                        self.unordered_list_item();
                    } else {
-                       //bold
+                       //TODO: bold
                        self.paragraph();
                    }
                }
@@ -43,7 +43,13 @@ impl<'a> Lexer<'a> {
                }
                b'+' => self.unordered_list_item(),
                b'\t' | b'\n' | b'\r' | b' ' => (),
-               _ => self.paragraph(),
+               _ => {
+                   if b.is_ascii_digit() {
+                       self.ordered_list_item()
+                   } else {
+                       self.paragraph()
+                   }
+               }
            }
        } 
        self.add_token(TokenType::EOF);
@@ -133,6 +139,29 @@ impl<'a> Lexer<'a> {
 
         self.advance_start(2);
         self.add_token(TokenType::ULItem);
+    }
+
+    fn ordered_list_item(&mut self) {
+        let mut num_of_digits = 1;
+        while self.current_byte().is_ascii_digit() {
+            self.advance();
+            num_of_digits += 1;
+        }
+
+        if self.peek() == b'.' {
+            while self.current_byte() != b'\n' {
+                self.advance();
+            }
+
+            self.advance_start(num_of_digits + 2);
+            self.add_token(TokenType::OLItem);
+        } else {
+            while self.current_byte() != b'\n' {
+                self.advance();
+            }
+
+            self.add_token(TokenType::P);
+        }
     }
 }
 
@@ -255,6 +284,41 @@ fn unordered_list_item() {
         *also not a list item
         -also *not* a list item
         ---
+        ";
+
+    let mut lexer = Lexer::new(source);
+    lexer.scan();
+
+    for (i, e) in expected.iter().enumerate() {
+        assert_eq!(e, &lexer.tokens[i], "failed at index {i}");
+    }
+}
+
+#[test]
+fn ordered_list_item() {
+    let expected = vec![
+        Token { token_type: TokenType::OLItem, text: "list item 1"},
+        Token { token_type: TokenType::OLItem, text: "list item 2"},
+        Token { token_type: TokenType::OLItem, text: "list item 3"},
+        Token { token_type: TokenType::P, text: "1 not a list item" },
+        Token { token_type: TokenType::OLItem, text: "list item 1"},
+        Token { token_type: TokenType::OLItem, text: "list item 2"},
+        Token { token_type: TokenType::OLItem, text: "list item 3"},
+        Token { token_type: TokenType::OLItem, text: "2 digit list item"},
+    ];
+
+    let source = "
+        1. list item 1
+        2. list item 2
+        3. list item 3
+
+        1 not a list item
+
+        8. list item 1
+        3. list item 2
+        1. list item 3
+
+        13. 2 digit list item
         ";
 
     let mut lexer = Lexer::new(source);
