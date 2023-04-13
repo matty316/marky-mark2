@@ -25,6 +25,23 @@ impl<'a> Lexer<'a> {
 
            match b {
                b'#' => self.header(),
+               b'*' => {
+                   if self.peek() == b' ' {
+                       self.unordered_list_item();
+                   } else {
+                       //bold
+                       self.paragraph();
+                   }
+               }
+               b'-' => {
+                   if self.peek() == b' ' {
+                       self.unordered_list_item();
+                   } else {
+                       //TODO: hr or header
+                       self.paragraph();
+                   }
+               }
+               b'+' => self.unordered_list_item(),
                b'\t' | b'\n' | b'\r' | b' ' => (),
                _ => self.paragraph(),
            }
@@ -64,6 +81,14 @@ impl<'a> Lexer<'a> {
         self.byte_at(self.current)
     }
 
+    fn peek(&self) -> u8 {
+        if !self.is_at_end() {
+            self.source[self.current]
+        } else {
+            b'\0'
+        }
+    }
+
     fn paragraph(&mut self) {
         while self.current_byte() != b'\n' && !self.is_at_end() {
             self.advance();
@@ -97,9 +122,17 @@ impl<'a> Lexer<'a> {
 
             self.add_token_with_text(TokenType::H(num_of_hashtags), text.trim());
         } else {
-            
             self.add_token(TokenType::P);
         }
+    }
+
+    fn unordered_list_item(&mut self) {
+        while self.current_byte() != b'\n' {
+            self.advance();
+        }
+
+        self.advance_start(2);
+        self.add_token(TokenType::ULItem);
     }
 }
 
@@ -177,5 +210,57 @@ fn paragraph() {
     for (i, e) in expected.iter().enumerate() {
         assert_eq!(e, &lexer.tokens[i], "failed at index {i}");
     }
+}
 
+#[test]
+fn unordered_list_item() {
+    let expected = vec![
+        Token { token_type: TokenType::ULItem, text: "list item 1"},
+        Token { token_type: TokenType::ULItem, text: "list item 2"},
+        Token { token_type: TokenType::ULItem, text: "list item 3"},
+        Token { token_type: TokenType::ULItem, text: "list item 1"},
+        Token { token_type: TokenType::ULItem, text: "list item 2"},
+        Token { token_type: TokenType::ULItem, text: "list item 3"},
+        Token { token_type: TokenType::ULItem, text: "list item 1"},
+        Token { token_type: TokenType::ULItem, text: "list item 2"},
+        Token { token_type: TokenType::ULItem, text: "list item 3"},
+        Token { token_type: TokenType::ULItem, text: "list item 1"},
+        Token { token_type: TokenType::ULItem, text: "list item 2"},
+        Token { token_type: TokenType::ULItem, text: "list item 3"},
+        Token { token_type: TokenType::P, text: "*not a list item*" },
+        Token { token_type: TokenType::P, text: "*also not a list item" },
+        Token { token_type: TokenType::P, text: "-also *not* a list item" }, //TODO: bold
+        Token { token_type: TokenType::P, text: "---"}, //TODO: hr
+        Token { token_type: TokenType::EOF, text: " " },
+    ];
+
+    let source = "
+        * list item 1
+        * list item 2
+        * list item 3
+        
+        - list item 1
+        - list item 2
+        - list item 3
+
+        + list item 1
+        + list item 2
+        + list item 3
+
+        * list item 1
+        - list item 2
+        + list item 3
+
+        *not a list item*
+        *also not a list item
+        -also *not* a list item
+        ---
+        ";
+
+    let mut lexer = Lexer::new(source);
+    lexer.scan();
+
+    for (i, e) in expected.iter().enumerate() {
+        assert_eq!(e, &lexer.tokens[i], "failed at index {i}");
+    }
 }
