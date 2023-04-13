@@ -25,13 +25,20 @@ impl<'a> Lexer<'a> {
 
            match b {
                b'#' => self.header(),
-               _ => (),
+               b'\t' | b'\n' | b'\r' | b' ' => (),
+               _ => self.paragraph(),
            }
        } 
-       self.add_token(TokenType::EOF, "");
+       self.add_token(TokenType::EOF);
     }
 
-    fn add_token(&mut self, token_type: TokenType, text: &'a str) {
+    fn add_token(&mut self, token_type: TokenType) {
+        let bytes = &self.source[self.start..self.current];
+        let text = str::from_utf8(bytes).unwrap();
+
+        self.add_token_with_text(token_type, text);
+    }
+    fn add_token_with_text(&mut self, token_type: TokenType, text: &'a str) {
         self.tokens.push(Token { token_type, text });
     }
 
@@ -57,6 +64,14 @@ impl<'a> Lexer<'a> {
         self.byte_at(self.current)
     }
 
+    fn paragraph(&mut self) {
+        while self.current_byte() != b'\n' && !self.is_at_end() {
+            self.advance();
+        }
+
+        self.add_token(TokenType::P);
+    }
+
     fn header(&mut self) {
         let mut num_of_hashtags = 1;
         while self.current_byte() == b'#' {
@@ -80,11 +95,10 @@ impl<'a> Lexer<'a> {
 
             let text = str::from_utf8(bytes).unwrap();
 
-            self.add_token(TokenType::H(num_of_hashtags), text.trim());
+            self.add_token_with_text(TokenType::H(num_of_hashtags), text.trim());
         } else {
-            let bytes = &self.source[self.start..self.current];
-            let text = str::from_utf8(bytes).unwrap();
-            self.add_token(TokenType::P, text);
+            
+            self.add_token(TokenType::P);
         }
     }
 }
@@ -129,7 +143,7 @@ fn header() {
     Token { text: "header 6", token_type: TokenType::H(6) },
     Token { text: "####### not a header", token_type: TokenType::P },
     Token { text: "#not a header", token_type: TokenType::P },
-    Token { text: "", token_type: TokenType::EOF },
+    Token { text: " ", token_type: TokenType::EOF },
     ];
 
     let mut lexer = Lexer::new(source);
@@ -138,4 +152,30 @@ fn header() {
     for (i, e) in expected.iter().enumerate() {
         assert_eq!(e, &lexer.tokens[i], "failed at index {i}");
     }
+}
+
+#[test]
+fn paragraph() {
+    let source = "
+        # this is a header
+
+        and this is a paragraph.
+
+        this is another one
+        ";
+
+    let expected = vec![
+        Token { token_type: TokenType::H(1), text: "this is a header" },
+        Token { token_type: TokenType::P, text: "and this is a paragraph." },
+        Token { token_type: TokenType::P, text: "this is another one" },
+        Token { text: " ", token_type: TokenType::EOF },
+    ];
+
+    let mut lexer = Lexer::new(source);
+    lexer.scan();
+
+    for (i, e) in expected.iter().enumerate() {
+        assert_eq!(e, &lexer.tokens[i], "failed at index {i}");
+    }
+
 }
