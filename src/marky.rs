@@ -2,7 +2,7 @@ use std::fs;
 use crate::lexer::Lexer;
 
 pub fn marky_str(source: &str) {
-    let lexer = Lexer::new(source);
+    let mut lexer = Lexer::new(source);
 
     lexer.scan();
 }
