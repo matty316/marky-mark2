@@ -29,7 +29,7 @@ impl<'a> Lexer<'a> {
                    if self.peek() == b' ' {
                        self.unordered_list_item();
                    } else {
-                       //TODO: bold
+                       //TODO: em
                        self.paragraph();
                    }
                }
@@ -258,7 +258,7 @@ fn unordered_list_item() {
         Token { token_type: TokenType::ULItem, text: "list item 3"},
         Token { token_type: TokenType::P, text: "*not a list item*" },
         Token { token_type: TokenType::P, text: "*also not a list item" },
-        Token { token_type: TokenType::P, text: "-also *not* a list item" }, //TODO: bold
+        Token { token_type: TokenType::P, text: "-also *not* a list item" }, //TODO: em
         Token { token_type: TokenType::P, text: "---"}, //TODO: hr
         Token { token_type: TokenType::EOF, text: " " },
     ];
